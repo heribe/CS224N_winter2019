@@ -65,6 +65,7 @@ def batch_iter(data, batch_size, shuffle=False):
     @param shuffle (boolean): whether to randomly shuffle the dataset
     """
     batch_num = math.ceil(len(data) / batch_size)
+    print("data_len="+len(data)+"  batch_num="+batch_num)
     index_array = list(range(len(data)))
 
     if shuffle:
