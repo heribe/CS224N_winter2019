@@ -250,7 +250,19 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/torch.html#torch.cat
         ###     Tensor Stacking:
         ###         https://pytorch.org/docs/stable/torch.html#torch.stack
-
+        # 1
+        enc_hiddens_proj = self.att_projection(enc_hiddens)
+        # 2
+        Y = self.model_embeddings.target(target_padded)
+        # 3
+        for yt in torch.split(Y,1):
+            yt = torch.squeeze(yt,0)
+            yb = torch.cat((yt,o_prev),1)
+            dec_state,o_t,e_t = self.step(yb,dec_state,enc_hiddens,enc_hiddens_proj,enc_masks)
+            combined_outputs.append(o_t)
+            o_prev = o_t
+        # 4
+        combined_outputs = torch.stack(combined_outputs)
 
         ### END YOUR CODE
 
@@ -308,7 +320,11 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/torch.html#torch.unsqueeze
         ###     Tensor Squeeze:
         ###         https://pytorch.org/docs/stable/torch.html#torch.squeeze
-
+        dec_state = self.decoder(Ybar_t,dec_state)
+        dec_hidden,dec_cell = dec_state
+        dec_hidden_uns = torch.unsqueeze(dec_hidden,2)
+        e_t = torch.bmm(enc_hiddens_proj,dec_hidden_uns)
+        e_t = torch.squeeze(e_t,2)
 
         ### END YOUR CODE
 
@@ -342,11 +358,21 @@ class NMT(nn.Module):
         ###     Tensor Concatenation:
         ###         https://pytorch.org/docs/stable/torch.html#torch.cat
         ###     Tanh:
-        ###         https://pytorch.org/docs/stable/torch.html#torch.tanh
-
+        ###         https://pytorch.org/docs/stable/torch.html#torch.tanh‍
+        # 1
+        alpha_t = torch.nn.functional.softmax(e_t,dim=1)
+        # 2
+        alpha_t = torch.unsqueeze(alpha_t,1)
+        a_t = torch.bmm(alpha_t,enc_hiddens)
+        a_t = torch.squeeze(a_t,1)
+        # 3
+        U_t = torch.cat((a_t,dec_hidden),dim=1)
+        # 4
+        V_t = self.combined_output_projection(U_t)
+        # 5
+        O_t = self.dropout(torch.nn.functional.tanh(V_t))
 
         ### END YOUR CODE
-
         combined_output = O_t
         return dec_state, combined_output, e_t
 

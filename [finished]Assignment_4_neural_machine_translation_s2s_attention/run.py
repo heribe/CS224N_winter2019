@@ -252,8 +252,8 @@ def train(args: Dict):
 
                         # reset patience
                         patience = 0
-
-                if epoch == int(args['--max-epoch']):
+                # print(int(args['--max-epoch']))
+                if epoch > int(args['--max-epoch']):
                     print('reached maximum number of epochs!', file=sys.stderr)
                     exit(0)
 
