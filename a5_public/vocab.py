@@ -159,7 +159,11 @@ class VocabEntry(object):
         ### TODO: 
         ###     Connect `words2charindices()` and `pad_sents_char()` which you've defined in 
         ###     previous parts
-        
+        sents_char = self.words2charindices(sents)
+        sents_pad = pad_sents_char(sents_char,self.char2id['<pad>'])
+        sents_var = torch.tensor(sents_pad,device=device,dtype=torch.long)
+        sents_var = sents_var.transpose(0,1).contiguous()
+        return sents_var
 
         ### END YOUR CODE
 
