@@ -10,6 +10,7 @@ Anand Dhoot <anandd@stanford.edu>
 Michael Hahn <mhahn2@stanford.edu>
 """
 
+import torch
 import torch.nn as nn
 
 # Do not change these imports; your module names should be
@@ -17,8 +18,8 @@ import torch.nn as nn
 #   `Highway` in the file `highway.py`
 # Uncomment the following two imports once you're ready to run part 1(j)
 
-# from cnn import CNN
-# from highway import Highway
+from cnn import CNN
+from highway import Highway
 
 # End "do not change" 
 
@@ -40,7 +41,14 @@ class ModelEmbeddings(nn.Module):
         ## End A4 code
 
         ### YOUR CODE HERE for part 1j
-
+        e_char = 50
+        prob = 0.3
+        self.embed_size = embed_size
+        #e_word = 256
+        self.embedding = nn.Embedding(len(vocab.char2id),e_char,padding_idx=vocab.char2id['<pad>'])
+        self.drop = nn.Dropout(prob)
+        self.cnn = CNN(e_char,embed_size)
+        self.highway = Highway(embed_size)
 
         ### END YOUR CODE
 
@@ -59,7 +67,14 @@ class ModelEmbeddings(nn.Module):
         ## End A4 code
 
         ### YOUR CODE HERE for part 1j
-
-
+        
+        char_es = self.embedding(input) # shape (sl,b,wl,e_char)
+        char_es_shape = char_es.transpose(2,3) # shape (sl,b,e_char,wl)
+        char_batch = char_es_shape.reshape(-1,char_es_shape.shape[-2],char_es_shape.shape[-1]) # shape (sl*b,e_char,wl)
+        x_cnn = self.cnn(char_batch) #shape (sl*b,e_word)
+        x_cnn_shape = x_cnn.reshape(char_es_shape.shape[0],char_es_shape.shape[1],-1)        
+        x_emb = self.highway(x_cnn_shape) # shape (sl,b,e_word)
+        x_emb_drop = self.drop(x_emb)
+        return x_emb_drop
         ### END YOUR CODE
 

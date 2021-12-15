@@ -20,8 +20,8 @@ class CNN(nn.Module):
 
     def forward(self,x_reshaped):
         """
-        @param x_reshaped(tensor): shape [max_sentence_length, batch_size,char_embedding, max_word_length]
-        @return x_conv_out(tensor): shape [max_sentence_length, batch_size, word_embedding]
+        @param x_reshaped(tensor): shape [batch_size,char_embedding, max_word_length]
+        @return x_conv_out(tensor): shape [ batch_size, word_embedding]
         """
         xconv = F.relu(self.conv1d(x_reshaped))
         x_conv_out = self.pool(xconv)
