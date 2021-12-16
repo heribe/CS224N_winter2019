@@ -181,7 +181,11 @@ def question_2d_sanity_check(decoder):
     print("Running Sanity Check for Question 2d: CharDecoder.decode_greedy()")
     print ("-"*80)
     sequence_length = 4
-    inpt = torch.zeros(1, BATCH_SIZE, HIDDEN_SIZE, dtype=torch.float)
+    # inpt = torch.zeros(1, BATCH_SIZE, HIDDEN_SIZE, dtype=torch.float)
+    inpt = torch.randn(1, BATCH_SIZE, HIDDEN_SIZE, dtype=torch.float)
+    inpt = torch.randn(1, BATCH_SIZE, HIDDEN_SIZE, dtype=torch.float)
+    inpt = torch.randn(1, BATCH_SIZE, HIDDEN_SIZE, dtype=torch.float)
+    # print("input: ",inpt)
     initialStates = (inpt, inpt)
     device = decoder.char_output_projection.weight.device
     decodedWords = decoder.decode_greedy(initialStates, device)

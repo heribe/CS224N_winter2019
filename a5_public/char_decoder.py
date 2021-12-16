@@ -5,10 +5,12 @@
 CS224N 2018-19: Homework 5
 """
 
+from os import pathsep
 from shutil import ignore_patterns
 import torch
 import torch.nn as nn
 from torch.nn.modules.rnn import LSTM
+import numpy as np
 
 class CharDecoder(nn.Module):
     def __init__(self, hidden_size, char_embedding_size=50, target_vocab=None):
@@ -38,6 +40,7 @@ class CharDecoder(nn.Module):
             self.decoderCharEmb = nn.Embedding(v_char,char_embedding_size,padding_idx=target_vocab.char2id['<pad>'])
             self.target_vocab = target_vocab
 
+        self.e_char = char_embedding_size
 
         ### END YOUR CODE
 
@@ -111,7 +114,32 @@ class CharDecoder(nn.Module):
         ###      - Use torch.tensor(..., device=device) to turn a list of character indices into a tensor.
         ###      - We use curly brackets as start-of-word and end-of-word characters. That is, use the character '{' for <START> and '}' for <END>.
         ###        Their indices are self.target_vocab.start_of_word and self.target_vocab.end_of_word, respectively.
-        
-        
+        v_char = len(self.target_vocab.char2id)
+        _,batch_size,h_size = initialStates[0].shape
+        startidx = self.target_vocab.start_of_word
+        endidx = self.target_vocab.end_of_word
+
+        pre_stat = initialStates #(1,b,h)
+        pre_char = torch.empty(1,batch_size,dtype=torch.long,device=device)
+        pre_char.fill_(startidx) #(1,b)
+        out_idx = [] # (wl,b)
+        for i in range(max_length):
+            s,pre_stat = self.forward(pre_char,pre_stat)
+            # charidx = nn.functional.softmax(s,dim=-1).argmax(dim=-1) #(1,b)
+            charidx = s.argmax(dim=-1) #(1,b)
+            out_idx.append(charidx.squeeze(dim=0).tolist())
+            pre_char = charidx
+        decodedWords = [""]*batch_size
+        out_idx = np.array(out_idx)
+        for i in range(batch_size):
+            chars = out_idx[:,i]
+            for c in chars:
+                if c!=endidx:
+                    decodedWords[i]+=self.target_vocab.id2char[c]
+                else :
+                    break
+        # print(decodedWords)
+        return decodedWords
         ### END YOUR CODE
 
+        
