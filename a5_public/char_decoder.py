@@ -5,8 +5,10 @@
 CS224N 2018-19: Homework 5
 """
 
+from shutil import ignore_patterns
 import torch
 import torch.nn as nn
+from torch.nn.modules.rnn import LSTM
 
 class CharDecoder(nn.Module):
     def __init__(self, hidden_size, char_embedding_size=50, target_vocab=None):
@@ -27,12 +29,13 @@ class CharDecoder(nn.Module):
         ### Hint: - Use target_vocab.char2id to access the character vocabulary for the target language.
         ###       - Set the padding_idx argument of the embedding matrix.
         ###       - Create a new Embedding layer. Do not reuse embeddings created in Part 1 of this assignment.
-        v_char = len(target_vocab.char2id)
         super(CharDecoder,self).__init__()
-        self.charDecoder = nn.LSTM(char_embedding_size,hidden_size,2,bias=True)
+        v_char = len(target_vocab.char2id)
+        # print("v_char:",v_char)
+        self.charDecoder = nn.LSTM(char_embedding_size,hidden_size,bias=True)
         self.char_output_projection = nn.Linear(hidden_size,v_char,bias=True)
         if target_vocab!=None :
-            self.decoderCharEmb = nn.Embedding(v_char,char_embedding_size,target_vocab.char2id['<pad>'])
+            self.decoderCharEmb = nn.Embedding(v_char,char_embedding_size,padding_idx=target_vocab.char2id['<pad>'])
             self.target_vocab = target_vocab
 
 
@@ -51,7 +54,11 @@ class CharDecoder(nn.Module):
         """
         ### YOUR CODE HERE for part 2b
         ### TODO - Implement the forward pass of the character decoder.
-        
+        input_embed = self.decoderCharEmb(input) # shape (wl,b,e_char)
+        x_lstm,new_dec_hidden = self.charDecoder(input_embed,dec_hidden) # x_lstm shape(wl,b,h) #TODO dec_hidden是不是应该二维的
+        s = self.char_output_projection(x_lstm) # shape(wl,b,V_char)
+
+        return s,new_dec_hidden
         
         ### END YOUR CODE 
 
@@ -69,8 +76,22 @@ class CharDecoder(nn.Module):
         ###
         ### Hint: - Make sure padding characters do not contribute to the cross-entropy loss.
         ###       - char_sequence corresponds to the sequence x_1 ... x_{n+1} from the handout (e.g., <START>,m,u,s,i,c,<END>).
+        lomm = nn.CrossEntropyLoss(ignore_index=self.target_vocab.char2id['<pad>'],reduction='sum')
+        s,_ = self.forward(char_sequence[:-1],dec_hidden) # (l-1,b,v_char)
+        l,b,v_char = s.shape
+        input = s.reshape(-1,v_char) # ((l-1)*b,v_char)
+        target = char_sequence[1:].reshape(-1) # ((l-1)*b)
+        loss = lomm(input,target)        
+        # print(loss)
+        return loss
 
-
+        # scores,dec_hidden = self.forward(char_sequence[:-1],dec_hidden) #(length,batch_size,vocab_size)
+        # entroy = nn.CrossEntropyLoss(ignore_index = self.target_vocab.char2id['<pad>'],reduction = 'sum') #不计算padding位置,将所有loss求和
+        # loss = entroy(scores.permute(1,2,0),char_sequence[1:].permute(1,0)) 
+        # #remove 'START' (batch_size,vocab_size,length) (batch_size,length) 第一维和最后一维要相同
+        # # print(loss)
+        # return loss
+        
         ### END YOUR CODE
 
     def decode_greedy(self, initialStates, device, max_length=21):

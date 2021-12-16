@@ -147,16 +147,28 @@ def question_2b_sanity_check(decoder, char_vocab):
     print("Sanity Check Passed for Question 2b: CharDecoder.forward()!")
     print("-"*80)
 
-def question_2c_sanity_check(decoder):
+def question_2c_sanity_check(decoder,char_vocab):
     """ Sanity check for CharDecoder.train_forward()
         basic shape check
     """
     print ("-"*80)
     print("Running Sanity Check for Question 2c: CharDecoder.train_forward()")
     print ("-"*80)
-    sequence_length = 4
-    inpt = torch.zeros(sequence_length, BATCH_SIZE, dtype=torch.long)
-    loss = decoder.train_forward(inpt)
+    sequence_length = 10
+    # inpt = torch.zeros(sequence_length, BATCH_SIZE, dtype=torch.long)
+    inpt = torch.randint(len(char_vocab.char2id),(sequence_length, BATCH_SIZE), dtype=torch.long)
+    n = 1000
+    start = time.process_time()
+    for i in range(n):
+        loss = decoder.train_forward2(inpt)
+    end = time.process_time()
+    print("loss2 tim: ",end-start)
+    start = time.process_time()
+    for i in range(n):
+        loss = decoder.train_forward(inpt)
+    end = time.process_time()
+    print("loss1 tim: ",end-start)
+    
     assert(list(loss.size()) == []), "Loss should be a scalar but its shape is: {}".format(list(loss.size()))
     print("Sanity Check Passed for Question 2c: CharDecoder.train_forward()!")
     print("-"*80)
@@ -220,7 +232,7 @@ def main():
     elif args['2b']:
         question_2b_sanity_check(decoder, char_vocab)
     elif args['2c']:
-        question_2c_sanity_check(decoder)
+        question_2c_sanity_check(decoder, char_vocab)
     elif args['2d']:
         question_2d_sanity_check(decoder)
     else:
