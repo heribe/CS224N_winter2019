@@ -35,7 +35,7 @@ args = argp.parse_args()
 
 # Save the device
 device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
-
+print("device is ",device)
 # Keep the block size 128
 # Why is the pretraining corpus always required (even if we're not pretraining?)
 # It's because we're using it as a hack to always have the same vocabulary
@@ -56,6 +56,7 @@ Don't change above here; write your code below
 
 if args.variant == 'vanilla':
     pass # TODO [part c]: Make some model here
+    gptm = model.GPT(mconf)
 elif args.variant == 'synthesizer':
     pass # TODO [part g]: Make some other model here
 
@@ -112,12 +113,24 @@ elif args.function == 'finetune':
     #         warmup_tokens=512*20
     #         final_tokens=200*len(pretrain_dataset)*block_size
     #         num_workers=4
-    raise NotImplementedError
+    # without pretrained model
+    textfine = open(args.finetune_corpus_path).read()
+    finetune_dataset = dataset.NameDataset(pretrain_dataset,textfine) 
+    ftconfig = trainer.TrainerConfig(max_epochs=75,batch_size=256,learning_rate=6e-4,lr_decay=True,warmup_tokens=512*12,\
+        final_tokens=200*len(pretrain_dataset)*block_size,num_workers=4,ckpt_path=args.writing_params_path)
+    fttrainer = trainer.Trainer(gptm,finetune_dataset,None,ftconfig)
+    fttrainer.train()
+    fttrainer.save_checkpoint()
+    # with pretrained model
+    # raise NotImplementedError
 elif args.function == 'evaluate':
     assert args.outputs_path is not None
     assert args.reading_params_path is not None
     assert args.eval_corpus_path is not None
-    model.load_state_dict(torch.load(args.reading_params_path))
+    gptm.load_state_dict(torch.load(args.reading_params_path))
+    gptm.to(device)
+    gptm.eval()
+    # model.load_state_dict(torch.load(args.reading_params_path))
     correct = 0
     total = 0
     with open(args.outputs_path, 'w') as fout:
@@ -126,7 +139,10 @@ elif args.function == 'evaluate':
             x = line.split('\t')[0]
             x = x + '⁇'
             x = torch.tensor([pretrain_dataset.stoi[s] for s in x], dtype=torch.long)[None,...].to(device)
-            pred = utils.sample(model, x, 32, sample=False)[0]
+            # print("gptm device ",next(gptm.parameters()).device)
+            # print("x device ",x.device)
+            # pred = utils.sample(model, x, 32, sample=False)[0]
+            pred = utils.sample(gptm, x, 32, sample=False)[0]
             completion = ''.join([pretrain_dataset.itos[int(i)] for i in pred])
             pred = completion.split('⁇')[1]
             predictions.append(pred)
