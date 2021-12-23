@@ -204,7 +204,7 @@ class CharCorruptionDataset(Dataset):
         masked_content_len = mean_masked_content_len + noise # add some randomness
         # Gaussian:
         # masked_content_len = random.gauss(1/4, 0.05) * len(truncated_document) # float
-
+        # masked_content_len = int(masked_content_len)
         masked_content_len = int(np.clip(masked_content_len, 1, truncate_len - 2))
         start_idx = random.randint(1, truncate_len - masked_content_len - 1)
         prefix = truncated_document[:start_idx]

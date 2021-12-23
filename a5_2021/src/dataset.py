@@ -1,5 +1,6 @@
 import random
 import torch
+from torch.functional import block_diag
 from torch.utils.data import Dataset
 import argparse
 
@@ -168,7 +169,39 @@ class CharCorruptionDataset(Dataset):
 
     def __getitem__(self, idx):
         # TODO [part e]: see spec above
-        raise NotImplementedError
+        # 1.Randomly truncate the document to a length no less than 4 characters,
+        #  and no more than int(self.block_size*7/8) characters. 
+        doc = self.data[idx]
+        if len(doc)==0:
+            pad = self.stoi[self.PAD_CHAR]
+            mask = self.stoi[self.MASK_CHAR]
+            x = torch.LongTensor([mask]*2+[pad]*(self.block_size-3))
+            y = torch.LongTensor([mask]+[pad]*(self.block_size-2))
+            assert len(x)==self.block_size-1,(len(x))
+            assert len(y)==self.block_size-1,(len(y))
+            return x,y
+        truncate_len = random.randint(4,self.block_size*7//8)
+        truncate_len = min(truncate_len,len(doc))
+        truncate_doc = doc[:truncate_len]
+        # 2. Now, break the (truncated) document into three substrings:
+        #  [prefix] [masked_content] [suffix]
+        masked_len = int(random.uniform(1/8*truncate_len,3/8*truncate_len))
+        masked_len = max(1,masked_len)
+        prefix_len = random.randint(1,truncate_len-masked_len-1)
+        # 3. Rearrange these substrings into the following form:
+        #  [prefix] MASK_CHAR [suffix] MASK_CHAR [masked_content] [pads]
+        seq = truncate_doc[:prefix_len]+self.MASK_CHAR+truncate_doc[prefix_len+masked_len:]+\
+            self.MASK_CHAR+truncate_doc[prefix_len:prefix_len+masked_len]+\
+                self.PAD_CHAR*(self.block_size-truncate_len-2)
+        # 4.
+        xseq = seq[:-1]
+        yseq = seq[1:]
+        # 5.
+        x = torch.LongTensor([self.stoi[c] for c in xseq])
+        y = torch.LongTensor([self.stoi[c] for c in yseq])
+        assert len(x)==self.block_size-1,(len(x))
+        assert len(y)==self.block_size-1,(len(y))
+        return x,y
 
 """
 Code under here is strictly for your debugging purposes; feel free to modify

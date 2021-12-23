@@ -81,7 +81,12 @@ if args.function == 'pretrain':
     #     warmup_tokens=512*20
     #     final_tokens=200*len(pretrain_dataset)*block_size
     #     num_workers=4
-    raise NotImplementedError
+    pretrain_confg = trainer.TrainerConfig(max_epochs=650,batch_size=128,learning_rate=6e-3,lr_decay=True,\
+        warmup_tokens=512*20,final_tokens=200*len(pretrain_dataset)*block_size,num_workers=4,ckpt_path=args.writing_params_path)    
+    pretrainer = trainer.Trainer(gptm,pretrain_dataset,None,pretrain_confg)
+    pretrainer.train()
+    pretrainer.save_checkpoint()
+    # raise NotImplementedError
 elif args.function == 'finetune':
     assert args.writing_params_path is not None
     assert args.finetune_corpus_path is not None
@@ -114,10 +119,16 @@ elif args.function == 'finetune':
     #         final_tokens=200*len(pretrain_dataset)*block_size
     #         num_workers=4
     # without pretrained model
+    if  args.reading_params_path==None:
+        ftconfig = trainer.TrainerConfig(max_epochs=75,batch_size=256,learning_rate=6e-4,lr_decay=True,warmup_tokens=512*20,\
+        final_tokens=200*len(pretrain_dataset)*block_size,num_workers=4,ckpt_path=args.writing_params_path)
+    else:
+        ftconfig = trainer.TrainerConfig(max_epochs=10,batch_size=256,learning_rate=6e-4,lr_decay=True,warmup_tokens=512*20,\
+        final_tokens=200*len(pretrain_dataset)*block_size,num_workers=4,ckpt_path=args.writing_params_path)
+        gptm.load_state_dict(torch.load(args.reading_params_path))
+        gptm.to(device)
     textfine = open(args.finetune_corpus_path).read()
     finetune_dataset = dataset.NameDataset(pretrain_dataset,textfine) 
-    ftconfig = trainer.TrainerConfig(max_epochs=75,batch_size=256,learning_rate=6e-4,lr_decay=True,warmup_tokens=512*12,\
-        final_tokens=200*len(pretrain_dataset)*block_size,num_workers=4,ckpt_path=args.writing_params_path)
     fttrainer = trainer.Trainer(gptm,finetune_dataset,None,ftconfig)
     fttrainer.train()
     fttrainer.save_checkpoint()
