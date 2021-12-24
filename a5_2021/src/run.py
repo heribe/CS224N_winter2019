@@ -58,6 +58,8 @@ if args.variant == 'vanilla':
     pass # TODO [part c]: Make some model here
     gptm = model.GPT(mconf)
 elif args.variant == 'synthesizer':
+    mconf.additive=True
+    gptm = model.GPT(mconf)
     pass # TODO [part g]: Make some other model here
 
 # From here on, your code should be identical independent of which
@@ -125,7 +127,10 @@ elif args.function == 'finetune':
     else:
         ftconfig = trainer.TrainerConfig(max_epochs=10,batch_size=256,learning_rate=6e-4,lr_decay=True,warmup_tokens=512*20,\
         final_tokens=200*len(pretrain_dataset)*block_size,num_workers=4,ckpt_path=args.writing_params_path)
-        gptm.load_state_dict(torch.load(args.reading_params_path))
+        if device!='cpu':   
+            gptm.load_state_dict(torch.load(args.reading_params_path))
+        else:
+            gptm.load_state_dict(torch.load(args.reading_params_path,map_location=torch.device('cpu'))) 
         gptm.to(device)
     textfine = open(args.finetune_corpus_path).read()
     finetune_dataset = dataset.NameDataset(pretrain_dataset,textfine) 
@@ -138,7 +143,10 @@ elif args.function == 'evaluate':
     assert args.outputs_path is not None
     assert args.reading_params_path is not None
     assert args.eval_corpus_path is not None
-    gptm.load_state_dict(torch.load(args.reading_params_path))
+    if device!='cpu':
+        gptm.load_state_dict(torch.load(args.reading_params_path))
+    else:
+        gptm.load_state_dict(torch.load(args.reading_params_path,map_location=torch.device('cpu'))) 
     gptm.to(device)
     gptm.eval()
     # model.load_state_dict(torch.load(args.reading_params_path))

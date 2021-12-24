@@ -69,3 +69,26 @@ number of parameters: 3323392
 No gold birth places provided; returning (0,0)
 Predictions written to vanilla.pretrain.test.predictions; no targets provided
 ```
+# g
+pretraining
+```bash
+epoch 648 iter 22: train loss 0.53710. lr 6.586443e-04: 100%|█| 23/23 [00:02<00:
+epoch 649 iter 22: train loss 0.55729. lr 6.881640e-04: 100%|█| 23/23 [00:02<00:
+epoch 650 iter 22: train loss 0.50611. lr 7.182453e-04: 100%|█| 23/23 [00:02<00:
+```
+finetuning
+```bash
+epoch 1 iter 7: train loss 0.77864. lr 5.999844e-04: 100%|█| 8/8 [00:01<00:00,  
+epoch 2 iter 7: train loss 0.64808. lr 5.999351e-04: 100%|█| 8/8 [00:01<00:00,  
+... 
+epoch 9 iter 7: train loss 0.30447. lr 5.986453e-04: 100%|█| 8/8 [00:01<00:00,  
+epoch 10 iter 7: train loss 0.26082. lr 5.983263e-04: 100%|█| 8/8 [00:01<00:00, 
+```
+evaluate
+```bash
+device is  0
+data has 418352 characters, 256 unique.
+number of parameters: 3076988
+500it [00:36, 13.68it/s]
+Correct: 66.0 out of 500.0: 13.200000000000001%
+```

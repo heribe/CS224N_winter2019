@@ -1,5 +1,6 @@
 import math
 import logging
+import re
 
 import torch
 import torch.nn as nn
@@ -16,6 +17,7 @@ class CausalSelfAttention(nn.Module):
 
     def __init__(self, config):
         super().__init__()
+        print("use causal")
         assert config.n_embd % config.n_head == 0
         # key, query, value projections for all heads
         self.key = nn.Linear(config.n_embd, config.n_embd)
@@ -59,11 +61,12 @@ Hint: paste over the CausalSelfAttention above and modify it minimally.
 class SynthesizerAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
+        print("use synthe")
         assert config.n_embd % config.n_head == 0
         # NEW learnable weights
         self.w1 = nn.Linear(config.n_embd, config.n_embd)
         self.w2 = nn.Parameter(torch.zeros(config.n_embd // config.n_head,
-            config.block_size-1))
+            config.block_size-1))  #(hs,BS)
         self.b2 = nn.Parameter(torch.zeros(config.block_size-1))
         # value projection
         self.value = nn.Linear(config.n_embd, config.n_embd)
@@ -89,5 +92,29 @@ class SynthesizerAttention(nn.Module):
         #   - Paste over the CausalSelfAttention above and modify it minimally.
         #   - Consider especially the parameters self.w1, self.w2 and self.b2.
         #       How do these map to the matrices in the handout?
-
-        raise NotImplementedError
+        B,nBS,ES = x.size()
+        # BS = self.block_size-1
+        # print("B,nBS,ES,BS",x.shape,BS)
+        # Yi = softmax(ReLU(XAi + b1)Bi + b2)(XVi),
+        # t1 = RelU(XAi+b1)
+        t1 = F.relu(self.w1(x)).view(B,nBS,self.n_head,ES//self.n_head).transpose(1,2)# (B,nBS,hn,hs)->(B,hn,nBS,hs)
+        # t2 = t1@Bi+b2
+        w2 = self.w2.view(1,1,self.w2.shape[0],self.w2.shape[1])[...,:nBS]
+        b2 = self.b2.view(1,1,1,self.b2.shape[0])[...,:nBS]
+        t2 = t1@w2+b2#(B,hn,nBS,hs)*(1,1,hs,BS) -> (B,hn,nBS,BS)
+        # att = softmax(t2)
+        # print("t2.size: ",t2.shape)
+        att = t2.masked_fill(self.mask[:,:,:nBS,:nBS] == 0, -1e10)
+        att = F.softmax(att,dim=-1) # (B,hn,nBS,BS)
+        att = self.attn_drop(att)
+        # y = att@XVi
+        v = self.value(x).view(B,nBS,self.n_head,ES//self.n_head).transpose(1,2) #(B,nBS,hn,hs)->#(B,hn,nBS,hs)
+        # print('v.size: ',v.shape)
+        # print('att.size: ',att.shape)
+        # att = att.transpose(-2,-1) #(B,hn,BS,nBS)
+        y = att@v  # (B,hn,BS,nBS)*(B,hn,nBS,hs)->(B,hn,BS,hs)
+        # y->Y
+        y = y.transpose(1,2).reshape(B,nBS,ES)
+        y = self.resid_drop(self.proj(y))
+        return y
+        # raise NotImplementedError
